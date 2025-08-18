@@ -276,9 +276,9 @@ xActual = xSplineArray[i];
             residualArray[i] = shortestDistance;
 		   // print(i+"::"+xSplineArray[i]+","+ySplineArray[i]+", ShortestDistance="+shortestDistance);   // USED FOR TESTING
 		// -------- Visual representation of analysis, un-comment below 2 lines for animation of best-fit ellipse analysis -------------
-			makeLine(xActual, yActual, shortestDistanceX, shortestDistanceY, 15);
-			Roi.setStrokeColor(0, 255, 0);
-			wait(10);
+		//	makeLine(xActual, yActual, shortestDistanceX, shortestDistanceY, 15);
+		//	Roi.setStrokeColor(0, 255, 0);
+		//	wait(10);
 		//---------
   }
   
@@ -340,4 +340,5 @@ Roi.setStrokeColor(0, 0, 255);
 
 // Option to export data to txt file
 //saveAs("Text", ImageDirectory+ImageNameNoExtension+".txt");
+
 
