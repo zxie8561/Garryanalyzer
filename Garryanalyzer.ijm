@@ -1,5 +1,5 @@
 list = getList("image.titles");
-Version = "v1.02"
+Version = "v1.03"
 if (list.length==0) {
  	  	exit("Garryanalyzer "+Version+" No image file selected. Please Open a Quercus Leaf image and re-launch the Garryanalyzer macro.")
  	  	}
@@ -339,4 +339,5 @@ Roi.setStrokeColor(0, 0, 255);
 
 // Option to export data to txt file
 //saveAs("Text", ImageDirectory+ImageNameNoExtension+".txt");
+
 
