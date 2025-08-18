@@ -1,5 +1,5 @@
 list = getList("image.titles");
-Version = "v1.03"
+Version = "v1.04"
 if (list.length==0) {
  	  	exit("Garryanalyzer "+Version+" No image file selected. Please Open a Quercus Leaf image and re-launch the Garryanalyzer macro.")
  	  	}
@@ -276,8 +276,9 @@ xActual = xSplineArray[i];
             residualArray[i] = shortestDistance;
 		   // print(i+"::"+xSplineArray[i]+","+ySplineArray[i]+", ShortestDistance="+shortestDistance);   // USED FOR TESTING
 		// -------- Visual representation of analysis, un-comment below 2 lines for animation of best-fit ellipse analysis -------------
-		//	makeLine(xActual, yActual, shortestDistanceX, shortestDistanceY, 3);
-		//	wait(10);
+			makeLine(xActual, yActual, shortestDistanceX, shortestDistanceY, 15);
+			Roi.setStrokeColor(0, 255, 0);
+			wait(10);
 		//---------
   }
   
@@ -325,9 +326,9 @@ Dialog.create("Title")
 // Morphological identification output
 if (SpeciesR == 1) {
 
-print(ImageName+" is a Q. Garryana. Raw score: "+Species);
+print(ImageName+" is a Q. garryana. Probability score: "+Species);
    } else {
-print(ImageName+" is a Q. Robur. Raw score: "+Species);
+print(ImageName+" is a Q. robur. Probability score: "+Species);
 }
 
 // Morphological identification visual display settings
@@ -339,5 +340,4 @@ Roi.setStrokeColor(0, 0, 255);
 
 // Option to export data to txt file
 //saveAs("Text", ImageDirectory+ImageNameNoExtension+".txt");
-
 
