@@ -1,16 +1,18 @@
 list = getList("image.titles");
-Version = "v1.04"
+Version = "v1.05.2"
 if (list.length==0) {
  	  	exit("Garryanalyzer "+Version+" No image file selected. Please Open a Quercus Leaf image and re-launch the Garryanalyzer macro.")
  	  	}
- 	  	
+
 	ImageDirectory = getInfo("image.directory");
 	ImageName = getTitle();
 	ImageNameNoExtension = File.getNameWithoutExtension(ImageName);
 
+// Garryanalyzer is a leaf morphological identification ImageJ plugin for quantifying and identifying Quercus garryana and Q. robur leaf images.
+// Although specific equation functionality (Subsection Oa) is tuned for Q. garryana and robur leaf differentiation, variables and script workflow is meant to be adaptable for quantification in leaves of other model systems.
+// More information and support for Garryanalyzer available on webpage: https://github.com/zxie8561/Garryanalyzer
 
-// Clear any previous selections or windows
-// This is to minimize conflicts and script errors
+// A - Clear any previous selections or windows
 
 if (isOpen("Results")) {
     selectWindow("Results");
@@ -22,84 +24,59 @@ if (isOpen("Summary")) {
     run("Close");
 }
 
-if (isOpen("ROI Manager")) {
-    selectWindow("ROI Manager");
-    run("Close");
-}
-
 print("\\Clear");
 run("Clear Results");
 run("Clear Results", "exclude");
 run("ROI Manager...");
 roiManager("reset");
-
-// Define Image
+roiManager("Show None");
 
 selectWindow(ImageName);
 
-setTool(4); //Set tool to Straight Line
-run("Line Width...", "line=50");
+setTool(4); // B - Set tool to Straight Line
 
+	run("Line Width...", "line=70");
 waitForUser("Garryanalyzer "+Version+" analysis of "+ImageName+"\n Please confirm the image is horizontal, with petiole on the left.\n Click and drag from base to tip of petiole (Stem), then click OK");
- roiManager("Add");
- 
+roiManager("Add");
+
 roiManager("select", 0);
-roiManager("rename", "Petiole Length");
+roiManager("rename", "1 Petiole Length");
 
-// Convert the image to 8-bit grayscale
+// C - Preprocessing - Convert the image to 8-bit grayscale, Threshold, then Convert to Mask
 run("8-bit");
-
-// Apply thresholding to segment the object
-//setAutoThreshold("Default");
-//run("Threshold");
-
-//setAutoThreshold("Default no-reset");
 run("Auto Threshold", "method=Huang2");
-//setThreshold(0, 254);
 run("Convert to Mask");
 
+// D - Select Petiole/Stem of Leaf, Turn to Black (Mask out of Blade)
+
 	roiManager("Select", 0);
-	
 	Roi.getCoordinates(xpoints, ypoints);
 	i = 0;
 	Color.set("black");
 	ImageHeight = getHeight();
-	
+
 	for (i=0; i< ypoints.length; i++) {
-	makeRectangle(0, 0, xpoints[i], ImageHeight);
-	fill();
-	//makeRectangle(0, 0, xpoints[i], ImageHeight);
-//	fill();
+
+	run("Line Width...", "line=70");
+	run("Fill", "slice");
+
 	}
-	
+
 run("Select None");
 
-// Create a mask from the thresholded image
+// E - Reconvert to mask, Find Edges
 run("Convert to Mask");
-//waitForUser("Convert to Mask"); // Diagnostic Step #1
-//run("Fill Holes"); // Test new function
-// Find the edges of the object
-
-// doWand(getWidth()/2, getHeight()/2);
-// run("Make Inverse");
-//  setColor(0, 0, 0);
-//run("Fill", "slice");
-
-//waitForUser("Island Check"); // Diagnostic Step #2
-
 run("Find Edges");
 
-// Create a highlighted shape
+// F - Create a highlighted shape, Multiply
 run("Duplicate...", "title=Highlighted_Shape");
 run("Multiply...", "value=255");
 run("Select None");
 
-// Measure the major and minor axis lengths
-//waitForUser("Ellipse Axis Check"); //Diagnostic Step #3
+// G - Measure the major and minor axis lengths (Convert to RGB to show color of measurements)
 run("3-3-2 RGB");
 run("Set Measurements...", "area centroid perimeter fit shape feret's redirect=None decimal=2");
 run("Analyze Particles...", "size=0-Infinity show=Masks display clear include summarize");
-//waitForUser("Analyze Particles"); // Diagnostic Step #4
 Islands = getValue("results.count");
 
 LeafResult = 0;
@@ -107,10 +84,11 @@ LeafResult = 0;
 LeafLargestMajor = 0;
 LeafComparisonMajor = 0;
 
+// H - Islands management, Islands refers to other objects in image that survived thresholding. Select largest island (Expected to be Leaf).
 for (i=0; i<Islands; i++) {
-  	
+
   	LeafComparisonMajor = getResult("Major", i);
-  	
+
   	if (LeafComparisonMajor > LeafLargestMajor) {
 		LeafResult = i;
 		LeafLargestMajor = getResult("Major", i);
@@ -119,39 +97,36 @@ for (i=0; i<Islands; i++) {
 
 i = LeafResult;
 
-//waitForUser("Island selected ="+i); // Diagnostic Step #6
+// I - Generate the Best-Fit Ellipse
 
-// Draw best fitting ellipses
-
+// I a - Calculations for scale
 getVoxelSize(rescale, height, depth, unit);
 
 majorAxis = getResult("Major", i) / rescale;
 minorAxis = getResult("Minor", i) / rescale;
+angle = getResult("Angle", i);
 
 xc = getResult("X", i) / rescale;	// xc = center x, yc = center y
 yc = getResult("Y", i) / rescale;
 
-angle = getResult("Angle", i);
-
-print("majorAxis:"+majorAxis+", minorAxis:"+minorAxis);
 print("xc:"+xc+", yc:"+xc);
 
-// Draw ellipse
+//makePoint(xc, yc, "cross");	// Show center point of Ellipse
+
+// I b - Draw ellipse
 makeOval(xc-(majorAxis/2), yc-(minorAxis/2), majorAxis, minorAxis);
 run("Rotate...", "angle=" + (180 - angle));
-roiManager("Add"); // ellipses added to ROI Manager
+	roiManager("Add"); // ellipse is added to ROI Manager
+
 roiManager("select", 1);
-roiManager("rename", "Best-Fit Ellipse");
+roiManager("rename", "2 Best-Fit Ellipsoid");
 run("Overlay Options...", "stroke=orange width=0 fill=none");
 run("Add Selection...");
 
 EllipseX = xc-(majorAxis/2);
 EllipseY = yc-(minorAxis/2);
 
-//waitForUser("Created Best-Fit Ellipse"); // Diagnostic Step #7
-
-// Draw axes
-
+// I c - Draw axis of Ellipse
 a = angle * PI / 180; // convert angle degrees to radians
 run("Overlay Options...", "stroke=blue width=0 fill=none");
 d = majorAxis;
@@ -168,29 +143,28 @@ run("Add Selection...");
 
 run("Select None");
 
-// Close the original and highlighted shape images
+// Optional, save the highlighted shape with elliptical overlay
+//saveAs("JPEG", "ellipsoid.jpg");
+
+// J - Close the original and highlighted shape images
 selectWindow(ImageName);
 close();
 selectWindow("Highlighted_Shape");
- 
 close();
 
-//waitForUser("doWand diagnostic Pre"); // Diagnostic Step #7
-
+// K - Select Leaf Blade via Wand tool
 run("3-3-2 RGB");
- roiManager("Deselect");
  doWand(getWidth()/2, getHeight()/2);
  roiManager("Add");
- 
-//waitForUser("doWand diagnostic Post"); // Diagnostic Step #8
 
+// L - Create additional ROI for Petiole/Blade calculations
 roiManager("Select", 2);
-roiManager("rename", "Blade Outline");
+roiManager("rename", "3 Blade Outline");
 run("To Bounding Box");
  roiManager("Add");
  roiManager("Select", 3);
- roiManager("rename", "Blade Bounds");
- 
+ roiManager("rename", "4 Blade Bounds");
+
 getSelectionBounds(x, y, width, height);
 BladeLength = width;
 LeafX = x;
@@ -198,21 +172,18 @@ LeafY = (y+(width)/2);
 makeLine(x, y+(width)/2, x+width, y+(width)/2);
  roiManager("Add");
   roiManager("Select", 4);
-roiManager("rename", "Blade Length");
+roiManager("rename", "5 Blade Length");
 
-// After the Petiole Length is measured, we'd have enough information to calculate species type
 roiManager("Select", 0);
 getLine(x1, y1, x2, y2, lineWidth);
 makeLine(x1, y+(width)/2, x2, y+(width)/2);
  roiManager("Add");
    roiManager("Select", 5);
- roiManager("rename", "Petiole Length Flat");
- 
+ roiManager("rename", "6 Petiole Length Flat");
+
 PetioleLength = abs(x1-x2);
 
-
-//waitForUser("Fit Spline diagnostic Pre"); // Diagnostic Step #8
-
+// M - Take our leaf image, fit a 300-point spline to the blade, and use best-fit ellipse to find residuals, avg them, then divide by major length (Elliptical score)
 roiManager("Select", 2);
 run("Fit Spline");
 Roi.getSplineAnchors(xSplineArray, ySplineArray);
@@ -221,8 +192,6 @@ SemiMajorAxis = majorAxis/2 ; // Semi-major axis
 SemiMinorAxis = minorAxis/2; // Semi-minor axis
 Pi = 3.14159265358979323846;
 // xc and yc
-
-//waitForUser("doWand diagnostic Post"); // Diagnostic Step #9
 
 // Compile distances into a residual array
 residualArray =newArray();
@@ -240,6 +209,8 @@ xActual = xSplineArray[i];
         unitDeltaX = deltaX / magnitude;
         unitDeltaY = deltaY / magnitude;
 
+        // Calculate coordinates of the closest point on the ellipse
+
  		xClosest = xc + SemiMajorAxis * Math.sin(angle) * unitDeltaX;
     	yClosest = yc + SemiMajorAxis * Math.cos(angle) * unitDeltaY;
 
@@ -248,50 +219,44 @@ xActual = xSplineArray[i];
 		numPoints = 300; //xSplineArray.length;
 		shortestDistance = 999999999;
 		for (J=0; J < numPoints; J++) { // Number of points along the ellipse to calculate distances
-            t = (2 * Pi * J) / numPoints; // Vary t from 0 to 2π
+            t = (2 * Pi * J) / numPoints; // Vary t from 0 to 2
+
 			a = -(angle) * PI / 180;
-			fNewX = ( SemiMajorAxis * Math.cos(t) * Math.cos(a) ) - ( (SemiMinorAxis)* Math.sin(t) * Math.sin(a) ) + xc ;	
-			
+			fNewX = ( SemiMajorAxis * Math.cos(t) * Math.cos(a) ) - ( (SemiMinorAxis)* Math.sin(t) * Math.sin(a) ) + xc ;
+
 			fNewY = ( SemiMajorAxis * Math.cos(t) * Math.sin(a) ) + ( (SemiMinorAxis)* Math.sin(t) * Math.cos(a) ) + yc ;
-             
+
             distance = Math.sqrt(Math.pow(yActual - fNewY, 2) + Math.pow(xActual - fNewX, 2));
 			if (i == 0) {
 			makePoint(fNewX, fNewY);
 			run("Add Selection...");
 			}
-				
 
-           //
+	//	print("Iteration: "+i+", J="+J);
+
            if (distance < shortestDistance) {
            	shortestDistance = distance;
            	shortestDistanceX = fNewX;
            	shortestDistanceY = fNewY;
-         
-           	
-		//print("Iteration: "+i+", J="+J+" Updated shortestDistance as: "+shortestDistance);
            }
 
 		}
            // Add the distance to the residual array
             residualArray[i] = shortestDistance;
-		   // print(i+"::"+xSplineArray[i]+","+ySplineArray[i]+", ShortestDistance="+shortestDistance);   // USED FOR TESTING
-		// -------- Visual representation of analysis, un-comment below 2 lines for animation of best-fit ellipse analysis -------------
-		//	makeLine(xActual, yActual, shortestDistanceX, shortestDistanceY, 15);
-		//	Roi.setStrokeColor(0, 255, 0);
+			// Elliptical Function in practice. Uncomment
+		   // print(i+"::"+xSplineArray[i]+","+ySplineArray[i]+", ShortestDistance="+shortestDistance);   // Used for visual conceptualization and troubleshooting
+
+		// -------- Visual representation of analysis -- Uncomment the below 2 lines to see how Elliptical Function processes. Extends processing time significantly. -------------
+		//	makeLine(xActual, yActual, shortestDistanceX, shortestDistanceY, 3);
 		//	wait(10);
-		//---------
+		//---------------------------------------------------------
   }
-  
-//waitForUser("Best-Fit Ellipse Post"); // Diagnostic Step #10
-  
+
 Array.getStatistics(residualArray, min, max, bestResidualmean, stdDev);
-wait(5);
 close();
-wait(5);
 open(ImageName);
 
-
-//cleaning up
+// N - Clean up windows - Close Results, Summary
 
 if (isOpen("Results")) {
     selectWindow("Results");
@@ -303,6 +268,8 @@ if (isOpen("Summary")) {
     run("Close");
 }
 
+// O - Identification and variable annotation stage. By default this is the streamlined version for Q. Garryana vs Robur, as determined by aggregate data processing for significant variables.
+
 // Variables
 print("EllipticalScore = ("+bestResidualmean+"/"+majorAxis+")");
 print("PetioleBladeLengthRatio = ("+PetioleLength+"/"+BladeLength+")");
@@ -310,35 +277,25 @@ print("PetioleBladeLengthRatio = ("+PetioleLength+"/"+BladeLength+")");
 print("Elliptical = "+(bestResidualmean/majorAxis));
 print("PetioleBladeLengthRatio = "+(PetioleLength/BladeLength));
 
-// Morphology equation
-z = -23.99 + (203.60 * (bestResidualmean/majorAxis)) + (132.28 * (PetioleLength/BladeLength));
-P = 1/(1+exp(-z));
-
-// Conversion to output
-Species = P;
+// O a - Morphological classification equation. Comment this subsection out until similar identification equation is generated from data.
+Species = 5.748116717 * (bestResidualmean/majorAxis) + 2.312502157 * (PetioleLength/BladeLength);
 SpeciesR = round(Species);
 
-print(z+","+P);
-print(ImageName+","+(bestResidualmean/majorAxis)+","+(PetioleLength/BladeLength));
-
 Dialog.create("Title")
-
-// Morphological identification output
 if (SpeciesR == 1) {
-
-print(ImageName+" is a Q. garryana. Probability score: "+Species);
+print(ImageName+" is a Q. Garryana. Raw score: "+Species);
    } else {
-print(ImageName+" is a Q. robur. Probability score: "+Species);
+print(ImageName+" is a Q. Robur. Raw score: "+Species);
 }
 
-// Morphological identification visual display settings
+// O b - ROI manager Label annotation stage.
 roiManager("Show All with labels");
-roiManager("Select", 1);
-Roi.setStrokeColor(255, 0, 0);
 roiManager("Select", 2);
-Roi.setStrokeColor(0, 0, 255);
 
-// Option to export data to txt file
+// O c - Show Results with Blade Outline (particular ROI's additional characteristics)
+roiManager("Select", 2);
+roiManager("Measure");
+Table.rename("Results", "3 Blade Outline");
+
+// P - Data Export. Optional. Data can be exported from ImageJ for later analysis. The line below is set up for individual images, and would need to be combined with like categories.
 //saveAs("Text", ImageDirectory+ImageNameNoExtension+".txt");
-
-
